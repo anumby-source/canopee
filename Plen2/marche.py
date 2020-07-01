@@ -1,7 +1,6 @@
 # On importe Tkinter
 from tkinter import *
 import math
-import time
 
 # On cree une fenetre, racine de notre interface
 Fenetre = Tk()
@@ -14,25 +13,32 @@ articulations = []
 membres = []
 
 
-def scale(x, y):
+def scale(x: float, y: float) -> (float, float):
+    """
+    on considère des données graphiques décrites entre [0..1]
+    où le zéro se situe au niveau d'un sol fixe que l'on a positionné sur l'image
+    """
     xx = x * échelle
     yy = (1 - (y + sol_position)) * échelle
     return xx, yy
 
 
 class Point(object):
-    def __init__(self, x, y, color="orange"):
+    """
+    Classe classique pour des points graphiques
+    """
+    def __init__(self, x: float, y: float, color="orange") -> None:
         self.x = x
         self.y = y
         self.canvas = None
         self.object = None
         self.color = color
 
-    def pack(self, canvas):
+    def pack(self, canvas) -> None:
         if self.canvas is None:
             self.canvas = canvas
 
-    def dessine(self):
+    def dessine(self) -> None:
         x, y = scale(self.x, self.y)
         if self.object is None:
             self.object = self.canvas.create_oval(x - articulation,
@@ -41,14 +47,14 @@ class Point(object):
                                                   y + articulation,
                                                   fill=self.color, width=1)
         else:
-            coords = self.canvas.coords(self.object, [x - articulation,
-                                                      y - articulation,
-                                                      x + articulation,
-                                                      y + articulation])
+            self.canvas.coords(self.object, [x - articulation,
+                                             y - articulation,
+                                             x + articulation,
+                                             y + articulation])
         # coords = self.canvas.coords(self.object)
         # print("dessine art", coords)
 
-    def move(self, dx, dy):
+    def move(self, dx: float, dy: float) -> None:
         self.x += dx
         self.y += dy
         # print("move", dx, dy, self.x, self.y)
@@ -58,24 +64,24 @@ class Point(object):
         except:
             pass
 
-    def moveto(self, x, y):
+    def moveto(self, x: float, y: float) -> None:
         dx = x - self.x
         dy = y - self.y
         self.move(dx, dy)
 
-    def rotate(self, ref, angle):
+    def rotate(self, ref, angle: float) -> None:
         x = self.x - ref.x
         y = self.y - ref.y
         r = math.sqrt(x * x + y * y)
         try:
-            a = math.acos(x / r)
+            _a = math.acos(x / r)
             if y < 0:
-                a = 2*math.pi - a
+                _a = 2*math.pi - _a
             # print("ref=", ref.x, ref.y, "p=", self.x, self.y, "rel=", x, y, r, "a=", a*180/math.pi)
 
-            a += angle
-            x = r * math.cos(a) + ref.x
-            y = r * math.sin(a) + ref.y
+            _a += angle
+            x = r * math.cos(_a) + ref.x
+            y = r * math.sin(_a) + ref.y
             # print("a=", a*180/math.pi, "rel=", x, y)
             self.moveto(x, y)
         except:
@@ -83,31 +89,31 @@ class Point(object):
 
 
 class Articulation(Point):
-    def __init__(self, x, y, color="orange"):
-        Point.__init__(self, x, y, color=color)
+    def __init__(self, x: float, y: float, color="orange"):
+        Point.__init__(self, x=x, y=y, color=color)
         articulations.append(self)
 
 
 class Membre(object):
-    def __init__(self, longueur, a, b, color="red"):
+    def __init__(self, longueur: float, _a: Articulation, _b: Articulation, color="red"):
         self.longueur = float(longueur)
-        self.a = a
-        self.b = b
+        self.a = _a
+        self.b = _b
         self.canvas = None
         self.object = None
         self.color = color
         membres.append(self)
 
-    def check_longueur(self):
-        l = math.sqrt((self.a.x - self.b.x)*(self.a.x - self.b.x) +
-                      (self.a.y - self.b.y)*(self.a.y - self.b.y))
-        return abs((l - self.longueur)/self.longueur) < 0.0001
+    def check_longueur(self) -> bool:
+        longueur = math.sqrt((self.a.x - self.b.x)*(self.a.x - self.b.x) +
+                             (self.a.y - self.b.y)*(self.a.y - self.b.y))
+        return abs((longueur - self.longueur)/self.longueur) < 0.0001
 
-    def pack(self, canvas):
+    def pack(self, canvas) -> None:
         if self.canvas is None:
             self.canvas = canvas
 
-    def dessine(self):
+    def dessine(self) -> None:
         ax, ay = scale(self.a.x, self.a.y)
         bx, by = scale(self.b.x, self.b.y)
         if self.object is None:
@@ -115,10 +121,10 @@ class Membre(object):
                                                   bx, by,
                                                   fill=self.color, width=1)
         else:
-            coords = self.canvas.coords(self.object, [ax,
-                                                      ay,
-                                                      bx,
-                                                      by])
+            self.canvas.coords(self.object, [ax,
+                                             ay,
+                                             bx,
+                                             by])
         # coords = self.canvas.coords(self.object)
         # print(coords)
 
@@ -127,25 +133,26 @@ class Sol(object):
     def __init__(self):
         pass
 
-    def dessine(self, canvas):
+    def dessine(self) -> None:
         x, y = scale(0, 0)
         zone_dessin.create_line(0, y,
                                 3*échelle, y,
                                 fill="green", width=3)
 
 
-def redessine():
-    for a in articulations:
-        a.dessine()
+def redessine() -> None:
+    for _a in articulations:
+        _a.dessine()
 
-    for m in membres:
-        m.dessine()
+    for _m in membres:
+        _m.dessine()
 
-    sol.dessine(zone_dessin)
+    sol.dessine()
 
 
-def degrés(angle):
+def degrés(angle: float) -> float:
     return angle*180/math.pi
+
 
 class Animation(object):
     def __init__(self):
@@ -154,7 +161,6 @@ class Animation(object):
         self.theta = 0
         self.longueur_jambe = fémur1.longueur + tibia1.longueur
         self.max_angle = 18
-        self.label = None
         self.phases = [self.phase1,
                        self.phase2,
                        self.phase3,
@@ -173,22 +179,27 @@ class Animation(object):
         self.tibia_arrière = tibia2
         self.cheville_arrière = cheville2
 
-    def log(self):
-        print("phase{} phi={:.2f} h={:.4f},{:.4f} g1={:.4f},{:.4f} g2={:.4f},{:.4f} c1={:.4f},{:.4f} c2={:.4f},{:.4f} ".format(self.phase,
-                                                           degrés(self.phi),
-                                                           hanche.x, hanche.y,
-                                                           genou1.x, genou1.y,
-                                                           genou2.x, genou2.y,
-                                                           cheville1.x, cheville1.y,
-                                                           cheville2.x, cheville2.y
-                                                           ))
+    def log(self) -> None:
+        print("phase{} phi={:.2f} "
+              "h={:.4f},{:.4f} "
+              "g1={:.4f},{:.4f} "
+              "g2={:.4f},{:.4f} "
+              "c1={:.4f},{:.4f} "
+              "c2={:.4f},{:.4f} ".format(self.phase,
+                                         degrés(self.phi),
+                                         hanche.x, hanche.y,
+                                         genou1.x, genou1.y,
+                                         genou2.x, genou2.y,
+                                         cheville1.x, cheville1.y,
+                                         cheville2.x, cheville2.y))
 
     """
     Etat de départ:
     - les deux jambes sont verticales
     
     Première phase:
-    - on avance la jambe_avant en avant en conservant la jambe strictement droite jusqu'à atteindre un angle de max_angle
+    - on avance la jambe_avant en avant en conservant la jambe strictement droite 
+        jusqu'à atteindre un angle de max_angle
     - la hanche reste exactement à la position
     
     """
@@ -204,7 +215,7 @@ class Animation(object):
         return degrés(self.phi) < self.max_angle
 
     """
-    - on pivote sur la jambe_arrière dns le but de poser le pied_avant au sol
+    - on pivote sur la jambe_arrière dans le but de poser le pied_avant au sol
     - les 2 jambes restent droites
     """
     def phase2(self):
@@ -341,16 +352,14 @@ class Animation(object):
         # on réinitialise tout pour resychroniser mais sans changer la référence = chevilleself.g
         self.cheville_avant.moveto(self.cheville_avant.x, 0)
         self.cheville_arrière.moveto(self.cheville_arrière.x, 0)
-        a = (self.cheville_arrière.x - self.cheville_avant.x) / 2
-        y = math.sqrt(self.longueur_jambe * self.longueur_jambe - a * a)
-        hanche.moveto(self.cheville_avant.x + a, y)
-        self.genou_avant.moveto(self.cheville_avant.x + a / 2, y / 2)
-        self.genou_arrière.moveto(self.cheville_arrière.x - a / 2, y / 2)
+        _a = (self.cheville_arrière.x - self.cheville_avant.x) / 2
+        y = math.sqrt(self.longueur_jambe * self.longueur_jambe - _a * _a)
+        hanche.moveto(self.cheville_avant.x + _a, y)
+        self.genou_avant.moveto(self.cheville_avant.x + _a / 2, y / 2)
+        self.genou_arrière.moveto(self.cheville_arrière.x - _a / 2, y / 2)
 
     def run(self):
         phase = self.phases[self.phase - 1]
-        label.delete(1.0, END)
-        label.insert(END, "phase{} phi={:2f}".format(self.phase, self.phi))
         if phase():
             redessine()
             Fenetre.after(100, self.run)
@@ -367,38 +376,13 @@ class Animation(object):
             return
 
 
-def test1():
-    ref = Point(0.6, 0.6)
-    p = Point(0.8, 0.6)
-    ref.pack(zone_dessin)
-    ref.dessine()
-    p.pack(zone_dessin)
-    p.dessine()
-
-    p1 = Point(0.8, 0.6)
-    p1.pack(zone_dessin)
-    i = 0
-
-    def tp():
-        global i
-        a = 0.2
-        print("tp> a=", a)
-        p1.rotate(ref, a)
-        p1.dessine()
-        i += 1
-        if i * 0.2 < 4 * math.pi:
-            Fenetre.after(100, tp)
-
-    tp()
-
-
 # Dans Fenetre nous allons creer un objet type Canvas qui se nomme zone_dessin
 # Nous donnons des valeurs aux proprietes "width", "height", "bg", "bd"
 zone_dessin = Canvas(Fenetre, width=3*échelle, height=échelle, bg="white", bd=8)
 zone_dessin.pack()  # Affiche le Canvas
 
 sol = Sol()
-sol.dessine(zone_dessin)
+sol.dessine()
 
 hanche = Articulation(0.5, 0.60)
 genou1 = Articulation(0.5, 0.30)
@@ -410,10 +394,6 @@ fémur1 = Membre(0.25, hanche, genou1)
 tibia1 = Membre(0.25, genou1, cheville1)
 fémur2 = Membre(0.25, hanche, genou2, color="blue")
 tibia2 = Membre(0.25, genou2, cheville2, color="blue")
-
-label = Text(Fenetre, wrap="word")
-label.insert("1.0", "phase")
-label.pack()
 
 for a in articulations:
     a.pack(zone_dessin)
@@ -435,19 +415,20 @@ l4 = fémur2.check_longueur()
 
 print("check", l1, l2, l3, l4)
 
+
 def start():
     animation = Animation()
     animation.run()
-
     redessine()
+
 
 def stop():
     quit()
 
 
-Start = Button(Fenetre, text ="Run", command = start)
+Start = Button(Fenetre, text="Run", command=start)
 Start.pack()
-Stop = Button(Fenetre, text ="Stop", command = stop)
+Stop = Button(Fenetre, text="Stop", command=stop)
 Stop.pack()
 
 # On demarre la boucle Tkinter qui s'interompt quand on ferme la fenetre
