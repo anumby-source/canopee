@@ -1,0 +1,255 @@
+﻿<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="fr" lang="fr">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<title>Quizz Canopée</title>
+<meta name="description" content="Quizz Anumby pour Canopée Art Colégram" />
+<meta name="robots" content="index,follow" />
+<meta http-equiv="content-language" content="fr" />
+<link href='styles/quizz.css' rel='stylesheet' type='text/css' />
+<script language="Javascript" src="js/questions-junior.js"></script>
+<script language="Javascript" src="js/questions-senior.js"></script>
+</head>
+<body>
+
+	<div class="div_conteneur_parent">
+	<div id="infos" class="texte_div"></div>
+		<div class="div_conteneur_page">
+			<!-- <a href="http://www.bonbache.fr/" target="_self"> -->
+			<a href="https://www.anumby.org/" target="_self">
+			<img src="images/logo-robot-anumby.png" style="width:150px;border:none;" align="left" alt="Anumby" />
+			</a>		
+			<div class="titre_page"><h1 class="titre_anumby">Quizz Canopée</h1></div>
+			
+			<div class="div_int_page">
+			
+			<div style="width:100%;display:block;text-align:center;">
+			</div>
+			
+			<div class="div_saut_ligne" style="height:30px;">
+			</div>						
+			
+			<div style="float:left;width:10%;height:40px;"></div>
+			<div style="float:left;width:80%;height:40px;text-align:center;">
+			<div class="calque_titre">
+			<h1>Sélectionner la bonne réponse</h1>
+			</div>
+			</div>
+					
+			<div style="float:left;width:10%;height:40px;"></div>
+			
+			<div class="div_saut_ligne">
+			</div>		
+			
+			<div style="width:100%;height:auto;text-align:center;">
+						
+			<div style="width:800px;display:inline-block;" id="conteneur">
+			
+				<div class="centre">
+					<div class="titre_centre" id="question">
+
+					</div>	
+				</div>
+			
+				<div class="colonne" id="liste">
+					<div class='calque_rep' id='rep1' onClick='valider(1)'></div>
+					<div class='calque_rep' id='rep2' onClick='valider(2)'></div>
+					<div class='calque_rep' id='rep3' onClick='valider(3)'></div>
+					<div class='calque_rep' id='rep4' onClick='valider(4)'></div>
+					<!-- <div class='calque_reponse' id='reponse'></div> -->
+				</div>
+				
+				<div class="centre">
+					<div class="titre_centre" id="apercu" style="text-align:left;font-family:Calibri;">
+					<input type="button" value="Junior" style="margin-left:10px;" onClick="debuter(1);" />
+					<input type="button" value="Senior" style="margin-left:10px;" onClick="debuter(2);" />
+					<div id="stats" style="float:right;padding-right:15px;">
+					<div style="float:left;">Votre score :&nbsp;</div>
+					<div id="score" style="float:left;font-weight:bold;">0</div>
+					<div style="float:left;"> &nbsp-- Questions restantes :&nbsp;</div>
+					<div id="restant" style="float:left;font-weight:bold;">1</div>
+					</div>
+					</div>	
+				</div>					
+				
+			</div>
+			
+			</div>
+
+			<div class="div_saut_ligne" style="height:50px;">
+			</div>	
+			
+			</div>
+		</div>
+	
+	</div>
+	
+</body>
+<script type="text/javascript" language="javascript">
+
+	var bonne_rep = 0; var nb_questions = 1;
+	var nb_erreurs = 0; var mem_nb_alea="";
+	var nb_bonne_rep = 0;
+	var jouer=false;
+	var type_questions=false;
+	var bonne_reponse="";
+	var la_question="";
+	
+	function debuter(type)
+	{
+		if (type == 1)
+			type_questions=true; //questions junior
+		else
+			type_questions=false; //questions senior
+			
+		jouer = true;
+		bonne_rep = 0; nb_questions = 1;
+		nb_erreurs = 0; mem_nb_alea="";
+		
+		//document.getElementById('reponse').style.backgroundColor='#9DF0B5';
+		//document.getElementById('reponse').innerText="";
+		
+		init();
+		suivant();
+	}
+	
+	
+	function init()
+	{
+		document.getElementById('restant').innerText = nb_questions;
+		//document.getElementById('score').innerText = 3-nb_erreurs;	
+		document.getElementById('score').innerText = nb_bonne_rep;
+		//alert("ici");
+	}
+	
+	
+	function valider(num_rep)
+	{
+		if(jouer==false)
+		return;
+
+		if(num_rep != bonne_rep)
+		{
+			nb_erreurs++;
+			//document.getElementById('reponse').style.backgroundColor="red";
+			//document.getElementById('reponse').innerText="La bonne réponse était:   " + bonne_reponse;
+			//alert (bonne_reponse);
+			nb_questions--;
+			if(nb_questions==0)
+				jouer=false;
+			popup();
+			init();
+			suivant();
+		}
+		else
+		{
+			//document.getElementById('reponse').style.backgroundColor='green';
+			//document.getElementById('reponse').innerText="Bravo!";
+			nb_questions--;
+			nb_bonne_rep++;
+			if(nb_questions==0)
+				jouer=false;
+			
+			init();
+			suivant();
+		}
+		//alert("ici");
+	}
+	
+	
+	function suivant()
+	{
+		var indice; var test=true; var nb_alea=0;
+
+		while (test==true)
+		{
+			//nb_alea = Math.floor(Math.random()*65) + 1;
+			nb_alea = Math.floor(Math.random()*30) + 1;
+			if(mem_nb_alea.indexOf('-' + nb_alea + '-')>-1)
+				//nb_alea = Math.floor(Math.random()*65) + 1;
+				nb_alea = Math.floor(Math.random()*30) + 1;
+			else
+			{
+				test=false;
+				mem_nb_alea += '-' + nb_alea + '-';
+			}
+		}
+
+		
+		if (type_questions==true)
+			var chaine_question = questions_junior(nb_alea);
+		else
+			var chaine_question = questions_senior(nb_alea);
+		//alert(chaine_question);
+
+		var tab_question = chaine_question.split('*');
+		document.getElementById('question').innerText = tab_question[0];
+		la_question= tab_question[0];
+
+		for (indice=1; indice<=4; indice++)
+		{
+			document.getElementById('rep' + indice).innerText = tab_question[indice];
+		}
+
+		bonne_rep = tab_question[5];
+		bonne_reponse = tab_question[bonne_rep];
+		
+		//document.getElementById('reponse').style.backgroundColor='#9DF0B5';
+		//document.getElementById('reponse').innerText=bonne_rep;
+			
+			
+		if(jouer==false)
+		{
+			switch(nb_erreurs)
+			{
+			case 0:
+			this.location='repBon.php';
+			break;
+			case 1:
+			this.location='repNul.php';
+			break;
+			case 2:
+			this.location='repMoyen.php';
+			break;
+			case 3:
+			this.location='repNul.php';
+			break;
+			}
+			return;
+		}
+	}
+	
+	function popup() 
+	{
+		w=800;
+		h=600;
+		LeftPosition = (screen.width) ? (screen.width-w)/2 : 0;
+		TopPosition = (screen.height) ? (screen.height-h)/2 : 0;
+		settings = 'height='+h+',width='+w+',top='+TopPosition+',left='+LeftPosition;
+		//popupWindow = window.open(url,winName,settings)
+		// Open a new window
+		//var myWindow = window.open("", "myWindow", "location=1, width=200, height=100");
+		var myWindow = window.open("", "myWindow", settings);
+
+		// Write some text in the new window
+		myWindow.document.write('<html><head><title>popup</title>');
+		myWindow.document.write('<link href="styles\/Anumby.css" rel="stylesheet" type="text\/css"/>');
+		myWindow.document.write('</head>');
+		//myWindow.document.write('<body style="background-color:orange">');
+		myWindow.document.write('<body class="body-red">');
+	
+		myWindow.document.write('<p style="color:blue">La question était:</p>');     
+		myWindow.document.write('<p style="font-weight:bold">' + la_question +'</p>');  
+		
+		// Write some text in the window that created the new window            
+		myWindow.document.write('<p style="color:blue">La bonne réponse était:</p>'); 
+		myWindow.document.write('<p style="font-weight:bold">' + bonne_reponse + '</p>'); 
+		myWindow.document.write('<p><a href="javascript:self.close()">Fermer la fenêtre</a></p>');
+		myWindow.document.write('</body>');
+		myWindow.document.write('</html>');
+		myWindow.document.close();
+
+}
+	
+</script>
+</html>
+	
