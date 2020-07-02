@@ -2,55 +2,85 @@
 from tkinter import *
 import math
 
-# On cree une fenetre, racine de notre interface
-Fenetre = Tk()
 
-échelle = 500
-articulation = 5
-sol_position = 0.1
+class Setup(object):
+    def __init__(self):
+        self.articulations = []
+        self.membres = []
 
-articulations = []
-membres = []
+        self.echelle = 500
+        self.articulation = 5
+        self.sol_position = 0.1
+
+        # On cree une fenetre, racine de notre interface
+        self.fenetre = Tk()
+
+        # Dans Fenetre nous allons creer un objet type Canvas qui se nomme zone_dessin
+        # Nous donnons des valeurs aux proprietes "width", "height", "bg", "bd"
+        self.zone_dessin = Canvas(self.fenetre, width=3*self.echelle, height=self.echelle, bg="white", bd=8)
+        self.zone_dessin.pack()
+
+        self.sol = Sol(setup=self)
+        self.sol.pack(self.zone_dessin)
+        self.sol.dessine()
+
+        self.body = Body(setup=self, canvas=self.zone_dessin, sol=self.sol)
+
+        start = Button(self.fenetre, text="Run", command=self.start)
+        start.pack()
+        stop = Button(self.fenetre, text="Stop", command=quit)
+        stop.pack()
+
+    def start(self):
+        animation = Animation(setup=self, body=self.body)
+        animation.run()
+        self.body.redessine()
+
+    def scale(self, x: float, y: float) -> (float, float):
+        """
+        on considère des données graphiques décrites entre [0..1]
+        où le zéro se situe au niveau d'un sol fixe que l'on a positionné sur l'image
+        """
+        xx = x * self.echelle
+        yy = (1 - (y + self.sol_position)) * self.echelle
+        return xx, yy
 
 
-def scale(x: float, y: float) -> (float, float):
-    """
-    on considère des données graphiques décrites entre [0..1]
-    où le zéro se situe au niveau d'un sol fixe que l'on a positionné sur l'image
-    """
-    xx = x * échelle
-    yy = (1 - (y + sol_position)) * échelle
-    return xx, yy
+class Dessin(object):
+    def __init__(self):
+        self.canvas = None
+
+    def pack(self, canvas):
+        if self.canvas is None:
+            self.canvas = canvas
 
 
-class Point(object):
+class Point(Dessin):
     """
     Classe classique pour des points graphiques
     """
-    def __init__(self, x: float, y: float, color="orange") -> None:
+    def __init__(self, setup: Setup, x: float, y: float, color="orange") -> None:
+        Dessin.__init__(self)
+        self.setup = setup
         self.x = x
         self.y = y
         self.canvas = None
         self.object = None
         self.color = color
 
-    def pack(self, canvas) -> None:
-        if self.canvas is None:
-            self.canvas = canvas
-
     def dessine(self) -> None:
-        x, y = scale(self.x, self.y)
+        x, y = self.setup.scale(self.x, self.y)
         if self.object is None:
-            self.object = self.canvas.create_oval(x - articulation,
-                                                  y - articulation,
-                                                  x + articulation,
-                                                  y + articulation,
+            self.object = self.canvas.create_oval(x - self.setup.articulation,
+                                                  y - self.setup.articulation,
+                                                  x + self.setup.articulation,
+                                                  y + self.setup.articulation,
                                                   fill=self.color, width=1)
         else:
-            self.canvas.coords(self.object, [x - articulation,
-                                             y - articulation,
-                                             x + articulation,
-                                             y + articulation])
+            self.canvas.coords(self.object, [x - self.setup.articulation,
+                                             y - self.setup.articulation,
+                                             x + self.setup.articulation,
+                                             y + self.setup.articulation])
         # coords = self.canvas.coords(self.object)
         # print("dessine art", coords)
 
@@ -58,7 +88,7 @@ class Point(object):
         self.x += dx
         self.y += dy
         # print("move", dx, dy, self.x, self.y)
-        dx, dy = scale(dx, dy)
+        dx, dy = self.setup.scale(dx, dy)
         try:
             self.canvas.move(self.object, dx, dy)
         except:
@@ -89,33 +119,31 @@ class Point(object):
 
 
 class Articulation(Point):
-    def __init__(self, x: float, y: float, color="orange"):
-        Point.__init__(self, x=x, y=y, color=color)
-        articulations.append(self)
+    def __init__(self, setup: Setup, x: float, y: float, color="orange"):
+        Point.__init__(self, setup=setup, x=x, y=y, color=color)
+        setup.articulations.append(self)
 
 
-class Membre(object):
-    def __init__(self, longueur: float, _a: Articulation, _b: Articulation, color="red"):
+class Membre(Dessin):
+    def __init__(self, setup: Setup, longueur: float, _a: Articulation, _b: Articulation, color="red"):
+        Dessin.__init__(self)
         self.longueur = float(longueur)
         self.a = _a
         self.b = _b
         self.canvas = None
         self.object = None
         self.color = color
-        membres.append(self)
+        self.setup = setup
+        self.setup.membres.append(self)
 
     def check_longueur(self) -> bool:
         longueur = math.sqrt((self.a.x - self.b.x)*(self.a.x - self.b.x) +
                              (self.a.y - self.b.y)*(self.a.y - self.b.y))
         return abs((longueur - self.longueur)/self.longueur) < 0.0001
 
-    def pack(self, canvas) -> None:
-        if self.canvas is None:
-            self.canvas = canvas
-
     def dessine(self) -> None:
-        ax, ay = scale(self.a.x, self.a.y)
-        bx, by = scale(self.b.x, self.b.y)
+        ax, ay = self.setup.scale(self.a.x, self.a.y)
+        bx, by = self.setup.scale(self.b.x, self.b.y)
         if self.object is None:
             self.object = self.canvas.create_line(ax, ay,
                                                   bx, by,
@@ -129,37 +157,83 @@ class Membre(object):
         # print(coords)
 
 
-class Sol(object):
-    def __init__(self):
-        pass
+class Sol(Dessin):
+    def __init__(self, setup: Setup):
+        Dessin.__init__(self)
+        self.setup = setup
 
     def dessine(self) -> None:
-        x, y = scale(0, 0)
-        zone_dessin.create_line(0, y,
-                                3*échelle, y,
+        x, y = self.setup.scale(0, 0)
+        self.canvas.create_line(0, y,
+                                3*self.setup.echelle, y,
                                 fill="green", width=3)
 
 
-def redessine() -> None:
-    for _a in articulations:
-        _a.dessine()
+class Body(Dessin):
+    def __init__(self, setup: Setup, canvas, sol: Sol):
+        Dessin.__init__(self)
+        self.canvas = canvas
+        self.sol = sol
+        self.setup = setup
 
-    for _m in membres:
-        _m.dessine()
+        self.hanche = Articulation(setup, 0.5, 0.60)
+        self.genou1 = Articulation(setup, 0.5, 0.30)
+        self.genou2 = Articulation(setup, 0.5, 0.30, color="green")
+        self.cheville1 = Articulation(setup, 0.5, 0)
+        self.cheville2 = Articulation(setup, 0.5, 0)
 
-    sol.dessine()
+        self.femur1 = Membre(setup, 0.25, self.hanche, self.genou1)
+        self.tibia1 = Membre(setup, 0.25, self.genou1, self.cheville1)
+        self.femur2 = Membre(setup, 0.25, self.hanche, self.genou2, color="blue")
+        self.tibia2 = Membre(setup, 0.25, self.genou2, self.cheville2, color="blue")
+
+        # repositionner les articulations pour vérifier les longueurs des membres
+        # les chevilles sont toutes les deux au sol
+        self.genou1.y = self.tibia1.longueur
+        self.hanche.y = self.tibia1.longueur + self.femur1.longueur
+
+        self.genou2.y = self.tibia2.longueur
+
+        l1 = self.tibia1.check_longueur()
+        l2 = self.femur1.check_longueur()
+        l3 = self.tibia2.check_longueur()
+        l4 = self.femur2.check_longueur()
+
+        print("check", l1, l2, l3, l4)
+
+        self.pack(canvas)
+
+    def pack(self, canvas):
+        for a in self.setup.articulations:
+            a.pack(self.canvas)
+
+        for m in self.setup.membres:
+            m.pack(self.canvas)
+
+        self.sol.pack(self.canvas)
+
+    def redessine(self) -> None:
+        for _a in self.setup.articulations:
+            _a.dessine()
+
+        for _m in self.setup.membres:
+            _m.dessine()
+
+        self.sol.dessine()
 
 
-def degrés(angle: float) -> float:
+def degres(angle: float) -> float:
     return angle*180/math.pi
 
 
 class Animation(object):
-    def __init__(self):
+    def __init__(self, setup: Setup, body: Body):
+        self.setup = setup
+        self.body = body
         self.phase = 1
         self.phi = 0
         self.theta = 0
-        self.longueur_jambe = fémur1.longueur + tibia1.longueur
+        self.longueur_jambe = body.femur1.longueur + body.tibia1.longueur
         self.max_angle = 18
         self.phases = [self.phase1,
                        self.phase2,
@@ -169,15 +243,15 @@ class Animation(object):
                        self.phase6]
         self.step = -0.02
 
-        self.fémur_avant = fémur1
-        self.genou_avant = genou1
-        self.tibia_avant = tibia1
-        self.cheville_avant = cheville1
+        self.femur_avant = body.femur1
+        self.genou_avant = body.genou1
+        self.tibia_avant = body.tibia1
+        self.cheville_avant = body.cheville1
 
-        self.fémur_arrière = fémur2
-        self.genou_arrière = genou2
-        self.tibia_arrière = tibia2
-        self.cheville_arrière = cheville2
+        self.femur_arriere = body.femur2
+        self.genou_arriere = body.genou2
+        self.tibia_arriere = body.tibia2
+        self.cheville_arriere = body.cheville2
 
     def log(self) -> None:
         print("phase{} phi={:.2f} "
@@ -186,12 +260,12 @@ class Animation(object):
               "g2={:.4f},{:.4f} "
               "c1={:.4f},{:.4f} "
               "c2={:.4f},{:.4f} ".format(self.phase,
-                                         degrés(self.phi),
-                                         hanche.x, hanche.y,
-                                         genou1.x, genou1.y,
-                                         genou2.x, genou2.y,
-                                         cheville1.x, cheville1.y,
-                                         cheville2.x, cheville2.y))
+                                         degres(self.phi),
+                                         self.body.hanche.x, self.body.hanche.y,
+                                         self.body.genou1.x, self.body.genou1.y,
+                                         self.body.genou2.x, self.body.genou2.y,
+                                         self.body.cheville1.x, self.body.cheville1.y,
+                                         self.body.cheville2.x, self.body.cheville2.y))
 
     """
     Etat de départ:
@@ -208,14 +282,14 @@ class Animation(object):
 
         self.log()
 
-        # on lance la jambe_avant vers l'avant, tout en gardans jambe_arrière verticale => chevile_avant décolle du sol
-        self.cheville_avant.rotate(hanche, -self.step)
-        self.genou_avant.rotate(hanche, -self.step)
+        # on lance la jambe_avant vers l'avant, tout en gardans jambe_arriere verticale => chevile_avant décolle du sol
+        self.cheville_avant.rotate(self.body.hanche, -self.step)
+        self.genou_avant.rotate(self.body.hanche, -self.step)
 
-        return degrés(self.phi) < self.max_angle
+        return degres(self.phi) < self.max_angle
 
     """
-    - on pivote sur la jambe_arrière dans le but de poser le pied_avant au sol
+    - on pivote sur la jambe_arriere dans le but de poser le pied_avant au sol
     - les 2 jambes restent droites
     """
     def phase2(self):
@@ -223,10 +297,10 @@ class Animation(object):
         self.log()
 
         # on pivote tout l'ensemble autour de cheville2
-        self.genou_arrière.rotate(self.cheville_arrière, self.step)
-        hanche.rotate(self.cheville_arrière, self.step)
-        self.genou_avant.rotate(self.cheville_arrière, self.step)
-        self.cheville_avant.rotate(self.cheville_arrière, self.step)
+        self.genou_arriere.rotate(self.cheville_arriere, self.step)
+        self.body.hanche.rotate(self.cheville_arriere, self.step)
+        self.genou_avant.rotate(self.cheville_arriere, self.step)
+        self.cheville_avant.rotate(self.cheville_arriere, self.step)
 
         # jusqu'à ce que self.cheville_avant touche le sol
         return self.cheville_avant.y > 0
@@ -235,7 +309,7 @@ class Animation(object):
     - tout pivote autour du pied #1 qui reste fixe au sol
     - simultanément:
         - on avance le genou #2 vers l'avant 2x plus vite que la rotation de la hanche
-        - le genou #2 fléchit vers l'arrière, soulevant le pied #2 du sol
+        - le genou #2 fléchit vers l'arriere, soulevant le pied #2 du sol
     """
     def phase3(self):
         self.phi += self.step
@@ -243,19 +317,19 @@ class Animation(object):
         self.log()
 
         # tout tourne autour de chevile1 vers l'avance
-        hanche.rotate(self.cheville_avant, self.step)
+        self.body.hanche.rotate(self.cheville_avant, self.step)
         self.genou_avant.rotate(self.cheville_avant, self.step)
-        self.genou_arrière.rotate(self.cheville_avant, self.step)
-        self.cheville_arrière.rotate(self.cheville_avant, self.step)
+        self.genou_arriere.rotate(self.cheville_avant, self.step)
+        self.cheville_arriere.rotate(self.cheville_avant, self.step)
 
         # la jambe2 rattrappe jambe1 => elle tourne 2x plus vite
-        self.genou_arrière.rotate(hanche, -2*self.step)
-        self.cheville_arrière.rotate(hanche, -2*self.step)
+        self.genou_arriere.rotate(self.body.hanche, -2*self.step)
+        self.cheville_arriere.rotate(self.body.hanche, -2*self.step)
 
-        # self.cheville_arrière reste fléchie en arrière pour décoller du sol
-        self.cheville_arrière.rotate(self.genou_arrière, 2.5*self.step)
+        # self.cheville_arriere reste fléchie en arriere pour décoller du sol
+        self.cheville_arriere.rotate(self.genou_arriere, 2.5*self.step)
 
-        return degrés(self.phi) > -self.max_angle/2
+        return degres(self.phi) > -self.max_angle/2
 
     """
     - tout pivote autour du pied #1 qui reste fixe au sol
@@ -270,24 +344,24 @@ class Animation(object):
 
         # on continue le mouvement de l'ensemble comme phase3
         self.genou_avant.rotate(self.cheville_avant, self.step)
-        hanche.rotate(self.cheville_avant, self.step)
-        self.genou_arrière.rotate(self.cheville_avant, self.step)
-        self.cheville_arrière.rotate(self.cheville_avant, self.step)
+        self.body.hanche.rotate(self.cheville_avant, self.step)
+        self.genou_arriere.rotate(self.cheville_avant, self.step)
+        self.cheville_arriere.rotate(self.cheville_avant, self.step)
 
         # la jambe2 rattrappe jambe1 => elle tourne 2x plus vite
-        self.genou_arrière.rotate(hanche, -2*self.step)
-        self.cheville_arrière.rotate(hanche, -2*self.step)
+        self.genou_arriere.rotate(self.body.hanche, -2*self.step)
+        self.cheville_arriere.rotate(self.body.hanche, -2*self.step)
 
-        # la self.cheville_arrière se redressse vers l'avant pour retrouver le contact vers le sol
-        self.cheville_arrière.rotate(self.genou_arrière, -5.2*self.step)
+        # la self.cheville_arriere se redressse vers l'avant pour retrouver le contact vers le sol
+        self.cheville_arriere.rotate(self.genou_arriere, -5.2*self.step)
 
-        return degrés(self.phi) > -self.max_angle
+        return degres(self.phi) > -self.max_angle
 
     """
     on va relancer le mouvement mais en échangeant les deux jambes
     """
     def phase5(self):
-        if degrés(self.phi) < -self.max_angle:
+        if degres(self.phi) < -self.max_angle:
             self.phi = 0
 
         self.phi += self.step
@@ -295,22 +369,22 @@ class Animation(object):
         self.log()
 
         # tout tourne autour de chevile1 vers l'avance
-        hanche.rotate(self.cheville_arrière, self.step)
-        self.genou_arrière.rotate(self.cheville_arrière, self.step)
-        self.genou_avant.rotate(self.cheville_arrière, self.step)
-        self.cheville_avant.rotate(self.cheville_arrière, self.step)
+        self.body.hanche.rotate(self.cheville_arriere, self.step)
+        self.genou_arriere.rotate(self.cheville_arriere, self.step)
+        self.genou_avant.rotate(self.cheville_arriere, self.step)
+        self.cheville_avant.rotate(self.cheville_arriere, self.step)
 
         # la jambe1 rattrappe jambe2 => elle tourne 2x plus vite
-        self.genou_avant.rotate(hanche, -2 * self.step)
-        self.cheville_avant.rotate(hanche, -2 * self.step)
+        self.genou_avant.rotate(self.body.hanche, -2 * self.step)
+        self.cheville_avant.rotate(self.body.hanche, -2 * self.step)
 
-        # self.cheville_avant reste fléchie en arrière pour décoller du sol
+        # self.cheville_avant reste fléchie en arriere pour décoller du sol
         self.cheville_avant.rotate(self.genou_avant, 2.5 * self.step)
 
-        return degrés(self.phi) > -self.max_angle
+        return degres(self.phi) > -self.max_angle
 
     def phase6(self):
-        if degrés(self.phi) < -self.max_angle:
+        if degres(self.phi) < -self.max_angle:
             self.phi = 0
 
         self.phi += self.step
@@ -318,118 +392,70 @@ class Animation(object):
         self.log()
 
         # on continue le mouvement de l'ensemble comme phase5
-        self.genou_arrière.rotate(self.cheville_arrière, self.step)
-        hanche.rotate(self.cheville_arrière, self.step)
-        self.genou_avant.rotate(self.cheville_arrière, self.step)
-        self.cheville_avant.rotate(self.cheville_arrière, self.step)
+        self.genou_arriere.rotate(self.cheville_arriere, self.step)
+        self.body.hanche.rotate(self.cheville_arriere, self.step)
+        self.genou_avant.rotate(self.cheville_arriere, self.step)
+        self.cheville_avant.rotate(self.cheville_arriere, self.step)
 
         # la jambe1 rattrappe jambe2 => elle tourne 2x plus vite
-        self.genou_avant.rotate(hanche, -2 * self.step)
-        self.cheville_avant.rotate(hanche, -2 * self.step)
+        self.genou_avant.rotate(self.body.hanche, -2 * self.step)
+        self.cheville_avant.rotate(self.body.hanche, -2 * self.step)
 
         # la self.cheville_avant se redressse vers l'avant pour retrouver le contact vers le sol
         self.cheville_avant.rotate(self.genou_avant, -2.2 * self.step)
 
-        return degrés(self.phi) > -self.max_angle
+        return degres(self.phi) > -self.max_angle
 
     def reset(self):
         self.phi = 0
-        g = self.genou_arrière
-        c = self.cheville_arrière
-        f = self.fémur_arrière
-        t = self.tibia_arrière
+        g = self.genou_arriere
+        c = self.cheville_arriere
+        f = self.femur_arriere
+        t = self.tibia_arriere
 
-        self.genou_arrière = self.genou_avant
-        self.cheville_arrière = self.cheville_avant
-        self.fémur_arrière = self.fémur_avant
-        self.tibia_arrière = self.tibia_avant
+        self.genou_arriere = self.genou_avant
+        self.cheville_arriere = self.cheville_avant
+        self.femur_arriere = self.femur_avant
+        self.tibia_arriere = self.tibia_avant
 
         self.genou_avant = g
         self.cheville_avant = c
-        self.fémur_avant = f
+        self.femur_avant = f
         self.tibia_avant = t
 
         # on réinitialise tout pour resychroniser mais sans changer la référence = chevilleself.g
         self.cheville_avant.moveto(self.cheville_avant.x, 0)
-        self.cheville_arrière.moveto(self.cheville_arrière.x, 0)
-        _a = (self.cheville_arrière.x - self.cheville_avant.x) / 2
+        self.cheville_arriere.moveto(self.cheville_arriere.x, 0)
+        _a = (self.cheville_arriere.x - self.cheville_avant.x) / 2
         y = math.sqrt(self.longueur_jambe * self.longueur_jambe - _a * _a)
-        hanche.moveto(self.cheville_avant.x + _a, y)
+        self.body.hanche.moveto(self.cheville_avant.x + _a, y)
         self.genou_avant.moveto(self.cheville_avant.x + _a / 2, y / 2)
-        self.genou_arrière.moveto(self.cheville_arrière.x - _a / 2, y / 2)
+        self.genou_arriere.moveto(self.cheville_arriere.x - _a / 2, y / 2)
 
     def run(self):
         phase = self.phases[self.phase - 1]
         if phase():
-            redessine()
-            Fenetre.after(100, self.run)
+            self.body.redessine()
+            self.setup.fenetre.after(100, self.run)
             return
         self.phase += 1
         print("------------------------------------------------------")
         if self.phase <= 6:
-            Fenetre.after(1, self.run)
+            self.setup.fenetre.after(1, self.run)
             return
         else:
             self.reset()
             self.phase = 5
-            Fenetre.after(1, self.run)
+            self.setup.fenetre.after(1, self.run)
             return
 
 
-# Dans Fenetre nous allons creer un objet type Canvas qui se nomme zone_dessin
-# Nous donnons des valeurs aux proprietes "width", "height", "bg", "bd"
-zone_dessin = Canvas(Fenetre, width=3*échelle, height=échelle, bg="white", bd=8)
-zone_dessin.pack()  # Affiche le Canvas
+def main():
+    setup = Setup()
 
-sol = Sol()
-sol.dessine()
-
-hanche = Articulation(0.5, 0.60)
-genou1 = Articulation(0.5, 0.30)
-genou2 = Articulation(0.5, 0.30, color="green")
-cheville1 = Articulation(0.5, 0)
-cheville2 = Articulation(0.5, 0)
-
-fémur1 = Membre(0.25, hanche, genou1)
-tibia1 = Membre(0.25, genou1, cheville1)
-fémur2 = Membre(0.25, hanche, genou2, color="blue")
-tibia2 = Membre(0.25, genou2, cheville2, color="blue")
-
-for a in articulations:
-    a.pack(zone_dessin)
-
-for m in membres:
-    m.pack(zone_dessin)
-
-# repositionner les articulations pour vérifier les longueurs des membres
-# les chevilles sont toutes les deux au sol
-genou1.y = tibia1.longueur
-hanche.y = tibia1.longueur + fémur1.longueur
-
-genou2.y = tibia2.longueur
-
-l1 = tibia1.check_longueur()
-l2 = fémur1.check_longueur()
-l3 = tibia2.check_longueur()
-l4 = fémur2.check_longueur()
-
-print("check", l1, l2, l3, l4)
+    # On demarre la boucle Tkinter qui s'interompt quand on ferme la fenetre
+    setup.fenetre.mainloop()
 
 
-def start():
-    animation = Animation()
-    animation.run()
-    redessine()
-
-
-def stop():
-    quit()
-
-
-Start = Button(Fenetre, text="Run", command=start)
-Start.pack()
-Stop = Button(Fenetre, text="Stop", command=stop)
-Stop.pack()
-
-# On demarre la boucle Tkinter qui s'interompt quand on ferme la fenetre
-Fenetre.mainloop()
+if __name__ == "__main__":
+    main()
