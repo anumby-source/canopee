@@ -1,5 +1,5 @@
-Simulateur our PLEN2
---------------------
+Simulateur pour PLEN2
+=====================
 
 * algo de base:
   * on fait marcher les articulations par rotations
@@ -11,4 +11,11 @@ Ajouter des masses
 Pilotage des servo-moteurs
 * calculer les séquences pour les servos
 
+Sujet des masses et du déplacement du centre de gravité
+-------------------------------------------------------
+On va ajouter de masses
+- sur les membres
+- sur body
+
+La masse s'applique sur le centre de gravité de chaque élément (membre + body)
 

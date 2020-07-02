@@ -119,17 +119,21 @@ class Point(Dessin):
 
 
 class Articulation(Point):
-    def __init__(self, setup: Setup, x: float, y: float, color="orange"):
-        Point.__init__(self, setup=setup, x=x, y=y, color=color)
+    def __init__(self, setup: Setup, x0: float, y0: float, color="orange"):
+        Point.__init__(self, setup=setup, x=x0, y=y0, color=color)
         setup.articulations.append(self)
 
 
 class Membre(Dessin):
-    def __init__(self, setup: Setup, longueur: float, _a: Articulation, _b: Articulation, color="red"):
+    def __init__(self, setup: Setup,
+                 longueur: float,
+                 art1: Articulation, art2: Articulation,
+                 masse: float = 0.0, color="red"):
         Dessin.__init__(self)
         self.longueur = float(longueur)
-        self.a = _a
-        self.b = _b
+        self.masse = masse
+        self.art1 = art1
+        self.art2 = art2
         self.canvas = None
         self.object = None
         self.color = color
@@ -137,13 +141,13 @@ class Membre(Dessin):
         self.setup.membres.append(self)
 
     def check_longueur(self) -> bool:
-        longueur = math.sqrt((self.a.x - self.b.x)*(self.a.x - self.b.x) +
-                             (self.a.y - self.b.y)*(self.a.y - self.b.y))
+        longueur = math.sqrt((self.art1.x - self.art2.x)*(self.art1.x - self.art2.x) +
+                             (self.art1.y - self.art2.y)*(self.art1.y - self.art2.y))
         return abs((longueur - self.longueur)/self.longueur) < 0.0001
 
     def dessine(self) -> None:
-        ax, ay = self.setup.scale(self.a.x, self.a.y)
-        bx, by = self.setup.scale(self.b.x, self.b.y)
+        ax, ay = self.setup.scale(self.art1.x, self.art1.y)
+        bx, by = self.setup.scale(self.art2.x, self.art2.y)
         if self.object is None:
             self.object = self.canvas.create_line(ax, ay,
                                                   bx, by,
@@ -176,16 +180,24 @@ class Body(Dessin):
         self.sol = sol
         self.setup = setup
 
-        self.hanche = Articulation(setup, 0.5, 0.60)
-        self.genou1 = Articulation(setup, 0.5, 0.30)
-        self.genou2 = Articulation(setup, 0.5, 0.30, color="green")
-        self.cheville1 = Articulation(setup, 0.5, 0)
-        self.cheville2 = Articulation(setup, 0.5, 0)
+        longueur_tibia = 0.25
+        longueur_femur = 0.25
+        longueur_tronc = 0.35
 
-        self.femur1 = Membre(setup, 0.25, self.hanche, self.genou1)
-        self.tibia1 = Membre(setup, 0.25, self.genou1, self.cheville1)
-        self.femur2 = Membre(setup, 0.25, self.hanche, self.genou2, color="blue")
-        self.tibia2 = Membre(setup, 0.25, self.genou2, self.cheville2, color="blue")
+        self.tete = Articulation(setup=setup, x0=0.5, y0=longueur_tibia + longueur_femur + longueur_tronc)
+        self.hanche = Articulation(setup=setup, x0=0.5, y0=longueur_tibia + longueur_femur)
+        self.genou1 = Articulation(setup=setup, x0=0.5, y0=longueur_tibia)
+        self.genou2 = Articulation(setup=setup, x0=0.5, y0=longueur_tibia, color="green")
+        self.cheville1 = Articulation(setup=setup, x0=0.5, y0=0)
+        self.cheville2 = Articulation(setup=setup, x0=0.5, y0=0)
+
+        self.tronc = Membre(setup=setup, longueur=longueur_tronc, art1=self.tete, art2=self.hanche, masse=1)
+        self.femur1 = Membre(setup=setup, longueur=longueur_femur, art1=self.hanche, art2=self.genou1, masse=1)
+        self.tibia1 = Membre(setup=setup, longueur=longueur_tibia, art1=self.genou1, art2=self.cheville1, masse=1)
+        self.femur2 = Membre(setup=setup, longueur=longueur_femur, art1=self.hanche, art2=self.genou2, masse=1,
+                             color="blue")
+        self.tibia2 = Membre(setup=setup, longueur=longueur_tibia, art1=self.genou2, art2=self.cheville2, masse=1,
+                             color="blue")
 
         # repositionner les articulations pour vérifier les longueurs des membres
         # les chevilles sont toutes les deux au sol
@@ -194,12 +206,17 @@ class Body(Dessin):
 
         self.genou2.y = self.tibia2.longueur
 
+        self.cdg = Articulation(setup=setup, x0=-0.1, y0=0, color="yellow")
+        self.sustentation = Articulation(setup=setup, x0=-0.1, y0=0, color="green")
+
+        """
         l1 = self.tibia1.check_longueur()
         l2 = self.femur1.check_longueur()
         l3 = self.tibia2.check_longueur()
         l4 = self.femur2.check_longueur()
 
         print("check", l1, l2, l3, l4)
+        """
 
         self.pack(canvas)
 
@@ -267,6 +284,22 @@ class Animation(object):
                                          self.body.cheville1.x, self.body.cheville1.y,
                                          self.body.cheville2.x, self.body.cheville2.y))
 
+    def centre_de_gravite(self):
+        masse = 0
+        moment = 0
+        for _m in self.setup.membres:
+            if __name__ == '__main__':
+                masse += _m.masse
+                moment += _m.masse * (_m.art1.x + _m.art2.x) / 2
+            position = moment / masse
+
+        sustensation = (self.body.cheville1.x + self.body.cheville2.x) / 2
+        print("équilibre ", position - sustensation)
+        self.body.cdg.moveto(sustensation + position - sustensation, -0.1 )
+        self.body.sustentation.moveto(sustensation, -0.1 )
+        self.body.cdg.dessine()
+        self.body.sustentation.dessine()
+
     """
     Etat de départ:
     - les deux jambes sont verticales
@@ -280,8 +313,6 @@ class Animation(object):
     def phase1(self):
         self.phi -= self.step
 
-        self.log()
-
         # on lance la jambe_avant vers l'avant, tout en gardans jambe_arriere verticale => chevile_avant décolle du sol
         self.cheville_avant.rotate(self.body.hanche, -self.step)
         self.genou_avant.rotate(self.body.hanche, -self.step)
@@ -294,11 +325,12 @@ class Animation(object):
     """
     def phase2(self):
         self.phi += self.step
-        self.log()
+        # self.log()
 
         # on pivote tout l'ensemble autour de cheville2
         self.genou_arriere.rotate(self.cheville_arriere, self.step)
         self.body.hanche.rotate(self.cheville_arriere, self.step)
+        self.body.tete.moveto(self.body.hanche.x, self.body.hanche.y + self.body.tronc.longueur)
         self.genou_avant.rotate(self.cheville_arriere, self.step)
         self.cheville_avant.rotate(self.cheville_arriere, self.step)
 
@@ -314,10 +346,9 @@ class Animation(object):
     def phase3(self):
         self.phi += self.step
 
-        self.log()
-
         # tout tourne autour de chevile1 vers l'avance
         self.body.hanche.rotate(self.cheville_avant, self.step)
+        self.body.tete.moveto(self.body.hanche.x, self.body.hanche.y + self.body.tronc.longueur)
         self.genou_avant.rotate(self.cheville_avant, self.step)
         self.genou_arriere.rotate(self.cheville_avant, self.step)
         self.cheville_arriere.rotate(self.cheville_avant, self.step)
@@ -340,11 +371,10 @@ class Animation(object):
     def phase4(self):
         self.phi += self.step
 
-        self.log()
-
         # on continue le mouvement de l'ensemble comme phase3
         self.genou_avant.rotate(self.cheville_avant, self.step)
         self.body.hanche.rotate(self.cheville_avant, self.step)
+        self.body.tete.moveto(self.body.hanche.x, self.body.hanche.y + self.body.tronc.longueur)
         self.genou_arriere.rotate(self.cheville_avant, self.step)
         self.cheville_arriere.rotate(self.cheville_avant, self.step)
 
@@ -366,10 +396,9 @@ class Animation(object):
 
         self.phi += self.step
 
-        self.log()
-
         # tout tourne autour de chevile1 vers l'avance
         self.body.hanche.rotate(self.cheville_arriere, self.step)
+        self.body.tete.moveto(self.body.hanche.x, self.body.hanche.y + self.body.tronc.longueur)
         self.genou_arriere.rotate(self.cheville_arriere, self.step)
         self.genou_avant.rotate(self.cheville_arriere, self.step)
         self.cheville_avant.rotate(self.cheville_arriere, self.step)
@@ -389,11 +418,10 @@ class Animation(object):
 
         self.phi += self.step
 
-        self.log()
-
         # on continue le mouvement de l'ensemble comme phase5
         self.genou_arriere.rotate(self.cheville_arriere, self.step)
         self.body.hanche.rotate(self.cheville_arriere, self.step)
+        self.body.tete.moveto(self.body.hanche.x, self.body.hanche.y + self.body.tronc.longueur)
         self.genou_avant.rotate(self.cheville_arriere, self.step)
         self.cheville_avant.rotate(self.cheville_arriere, self.step)
 
@@ -429,6 +457,7 @@ class Animation(object):
         _a = (self.cheville_arriere.x - self.cheville_avant.x) / 2
         y = math.sqrt(self.longueur_jambe * self.longueur_jambe - _a * _a)
         self.body.hanche.moveto(self.cheville_avant.x + _a, y)
+        self.body.tete.moveto(self.body.hanche.x, self.body.hanche.y + self.body.tronc.longueur)
         self.genou_avant.moveto(self.cheville_avant.x + _a / 2, y / 2)
         self.genou_arriere.moveto(self.cheville_arriere.x - _a / 2, y / 2)
 
@@ -437,6 +466,8 @@ class Animation(object):
         if phase():
             self.body.redessine()
             self.setup.fenetre.after(100, self.run)
+            # self.log()
+            self.centre_de_gravite()
             return
         self.phase += 1
         print("------------------------------------------------------")
